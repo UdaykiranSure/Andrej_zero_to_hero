@@ -296,6 +296,32 @@ def get_lr(it):
 
 
 
+
+model = GPT(**config_args).to(device)
+optimiser = torch.optim.AdamW(model.parameters(), lr = 3e-4, betas = (0.9, 0.95), eps = 1e-8)
+n_epochs = 1000
+for it in range(n_epochs):
+    t0 = time.time()
+    x,y = trainloader.next_batch()
+    x,y = x.to(device), y.to(device)
+    optimiser.zero_grad()
+    with torch.autocast(device_type=device,dtype=torch.float16):
+        logits, loss = model.forward(x,y)
+    loss.backward()
+    norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+    optimiser.lr = get_lr(it)
+    optimiser.step()
+    torch.cuda.synchronize()
+    t1 = time.time()
+    dt = t1 - t1
+    tokens_processed = trainloader.B * trainloader.T
+    tokens_per_sec = tokens_processed/(dt + 1e-8)
+    print(f'step {it:4d} | loss {loss.item():.6f} | norm {norm.item():.4f} | dt {dt:4f} | tokens_per_sec {tokens_per_sec:.6f}')
+
+
+
+
+
 # d_model = 32
 # d_k = d_v = 16
 # n_head = 4
